@@ -23,26 +23,91 @@ return {
 
     -- Add your own debuggers here
     'leoluz/nvim-dap-go',
+    'mfussenegger/nvim-dap-python', -- Optional adapter for Python
+
+    -- Remember nvim-dap breakpoints between sessions, ``:PBToggleBreakpoint``
+    {
+      'Weissle/persistent-breakpoints.nvim',
+      config = function()
+        require('persistent-breakpoints').setup {
+          load_breakpoints_event = { 'BufReadPost' },
+        }
+
+        vim.keymap.set('n', '<leader>dpb', ':PBToggleBreakpoint<CR>')
+      end,
+    },
+    {
+      'theHamsta/nvim-dap-virtual-text',
+      dependencies = {
+        'mfussenegger/nvim-dap',
+        'nvim-treesitter/nvim-treesitter',
+      },
+    },
+    {
+      'nvim-neotest/neotest',
+      dependencies = {
+        'nvim-neotest/nvim-nio',
+        'nvim-lua/plenary.nvim',
+        'antoinemadec/FixCursorHold.nvim',
+        'nvim-treesitter/nvim-treesitter',
+      },
+    },
+    {
+      'pocco81/dap-buddy.nvim',
+      dependencies = {
+        'mfussenegger/nvim-dap',
+      },
+    },
   },
   keys = function(_, keys)
     local dap = require 'dap'
     local dapui = require 'dapui'
+    local dapuw = require 'dap.ui.widgets'
+    local persist = require 'persistent-breakpoints.api'
     return {
       -- Basic debugging keymaps, feel free to change to your liking!
-      { '<F5>', dap.continue, desc = 'Debug: Start/Continue' },
-      { '<F1>', dap.step_into, desc = 'Debug: Step Into' },
-      { '<F2>', dap.step_over, desc = 'Debug: Step Over' },
-      { '<F3>', dap.step_out, desc = 'Debug: Step Out' },
-      { '<leader>b', dap.toggle_breakpoint, desc = 'Debug: Toggle Breakpoint' },
-      {
-        '<leader>B',
-        function()
-          dap.set_breakpoint(vim.fn.input 'Breakpoint condition: ')
-        end,
-        desc = 'Debug: Set Breakpoint',
-      },
+      { '<leader>dc', dap.continue, desc = '[d]ebug: Start/Continue' },
+      { '<leader>dj', dap.step_into, desc = '[d]ebug: Step Into' },
+      { '<leader>dl', dap.step_over, desc = '[d]ebug: Step Over' },
+      { '<leader>dk', dap.step_out, desc = '[d]ebug: Step Out' },
+      { '<leader>dh', dap.step_back, desc = '[d]ebug: Step back' },
+      { '<leader>b', persist.toggle_breakpoint, desc = 'Debug: Toggle [b]reakpoint' },
+      { '<leader>B', persist.set_conditional_breakpoint, desc = 'Debug: Set conditional [B]reakpoint' },
+      -- {
+      --   '<leader>B',
+      --   function()
+      --     persist.set_conditional_breakpoint(vim.fn.input '[B]reakpoint condition: ')
+      --   end,
+      --   desc = 'Debug: Set Breakpoint',
+      -- },
       -- Toggle to see last session result. Without this, you can't see session output in case of unhandled exception.
-      { '<F7>', dapui.toggle, desc = 'Debug: See last session result.' },
+      { '<leader>dlr', dapui.toggle, desc = '[d]ebug: See [l]ast session [r]esult.' },
+      { '<leader>dt', dap.set_log_level 'Trace', desc = '[d]ebug: See [t]race.' },
+      { '<leader>duh', dapuw.hover, desc = '[d]ebug: [u]I [h]over.' },
+      { '<leader>dup', dapuw.preview, desc = '[d]ebug: [u]I [p]review.' },
+      {
+        '<leader>duf',
+        function()
+          dapuw.centered_float(dapuw.frames)
+        end,
+        desc = '[d]ebug: [u]I float [f]rames.',
+      },
+      {
+        '<leader>dus',
+        function()
+          dapuw.centered_float(dapuw.scopes)
+        end,
+        desc = '[d]ebug: [u]I float [s]copes.',
+      },
+      { '<leader>d-', dap.restart, desc = '[d]ebug: Restart' },
+      {
+        '<leader>d_',
+        function()
+          dap.terminate()
+          dapui.close()
+        end,
+        desc = '[d]ebug: Close',
+      },
       unpack(keys),
     }
   end,
@@ -64,6 +129,7 @@ return {
       ensure_installed = {
         -- Update this to ensure that you have the debuggers for the langs you want
         'delve',
+        'pydebug',
       },
     }
 
@@ -89,6 +155,10 @@ return {
       },
     }
 
+    -- Configure icons for breakpoint and stopped point
+    vim.fn.sign_define('DapBreakpoint', { text = '🛑', texthl = '', linehl = '', numhl = '' })
+    vim.fn.sign_define('DapStopped', { text = '▶️', texthl = '', linehl = '', numhl = '' })
+
     dap.listeners.after.event_initialized['dapui_config'] = dapui.open
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
     dap.listeners.before.event_exited['dapui_config'] = dapui.close
@@ -101,5 +171,8 @@ return {
         detached = vim.fn.has 'win32' == 0,
       },
     }
+    require('dap-python').setup '/usr/bin/python3'
+    -- If using the above, then `python3 -m debugpy --version`
+    -- must work in the shell
   end,
 }

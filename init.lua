@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -114,9 +114,9 @@ vim.opt.showmode = false
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
-vim.schedule(function()
-  vim.opt.clipboard = 'unnamedplus'
-end)
+-- vim.schedule(function()
+--   vim.opt.clipboard = 'unnamedplus'
+-- end)
 
 -- Enable break indent
 vim.opt.breakindent = true
@@ -157,6 +157,21 @@ vim.opt.cursorline = true
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 10
 
+vim.keymap.set('i', 'jj', '<Esc>')
+
+vim.opt.clipboard = ''
+-- yank to clipboard
+vim.keymap.set('v', '<leader>y', '"+y')
+vim.keymap.set('n', '<leader>Y', '"+yg_')
+vim.keymap.set('n', '<leader>y', '"+y')
+vim.keymap.set('n', '<leader>yy', '"+yy')
+
+-- Paste from clipboard
+vim.keymap.set('n', '<leader>p', '"+p')
+vim.keymap.set('n', '<leader>P', '"+P')
+vim.keymap.set('v', '<leader>p', '"+p')
+vim.keymap.set('v', '<leader>P', '"+P')
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -185,6 +200,8 @@ vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' }
 --  Use CTRL+<hjkl> to switch between windows
 --
 --  See `:help wincmd` for a list of all window commands
+vim.keymap.set('n', '<C-s>', '<C-w><C-s>', { desc = 'Split window horizontally' })
+vim.keymap.set('n', '<C-v>', '<C-w><C-v>', { desc = 'Split window vertically' })
 vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
 vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
@@ -202,6 +219,18 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function()
     vim.highlight.on_yank()
   end,
+})
+
+-- sync with system clipboard on focus
+vim.api.nvim_create_autocmd({ 'FocusGained' }, {
+  pattern = { '*' },
+  command = [[call setreg("@", getreg("+"))]],
+})
+
+-- sync with system clipboard on focus
+vim.api.nvim_create_autocmd({ 'FocusLost' }, {
+  pattern = { '*' },
+  command = [[call setreg("+", getreg("@"))]],
 })
 
 -- [[ Install `lazy.nvim` plugin manager ]]
@@ -605,10 +634,10 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
-        -- rust_analyzer = {},
+        clangd = {},
+        gopls = {},
+        pyright = {},
+        rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
@@ -707,7 +736,35 @@ require('lazy').setup({
       },
     },
   },
+  {
+    'kawre/leetcode.nvim',
+    build = ':TSUpdate html',
+    dependencies = {
+      'nvim-telescope/telescope.nvim',
+      'nvim-lua/plenary.nvim', -- required by telescope
+      'MunifTanjim/nui.nvim',
 
+      -- optional
+      'nvim-treesitter/nvim-treesitter',
+      'rcarriga/nvim-notify',
+      'nvim-tree/nvim-web-devicons',
+    },
+    opts = {
+      lang = 'python3',
+      -- configuration goes here
+    },
+    config = function(_, opts)
+      require('leetcode').setup(opts)
+      vim.keymap.set('n', '<leader>lr', ':Leet run<CR>')
+      vim.keymap.set('n', '<leader>ls', ':Leet submit<CR>')
+      vim.keymap.set('n', '<leader>lm', ':Leet menu<CR>')
+      vim.keymap.set('n', '<leader>lc', ':Leet console<CR>')
+      vim.keymap.set('n', '<leader>ly', ':Leet yank<CR>')
+      vim.keymap.set('n', '<leader>lt', ':Leet tabs<CR>')
+      vim.keymap.set('n', '<leader>ll', ':Leet last_submit<CR>')
+      vim.keymap.set('n', '<leader>lo', ':Leet open<CR>')
+    end,
+  },
   { -- Autocompletion
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
@@ -728,12 +785,19 @@ require('lazy').setup({
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
+          {
+            'rafamadriz/friendly-snippets',
+            config = function()
+              require('luasnip.loaders.from_vscode').lazy_load()
+            end,
+          },
+          {
+            'chrisgrieser/nvim-scissors',
+            dependencies = 'nvim-telescope/telescope.nvim',
+            opts = {
+              snippetDir = '/home/joshdcurtis/.config/nvim/snippets/',
+            },
+          },
         },
       },
       'saadparwaiz1/cmp_luasnip',
@@ -779,9 +843,9 @@ require('lazy').setup({
 
           -- If you prefer more traditional completion keymaps,
           -- you can uncomment the following lines
-          --['<CR>'] = cmp.mapping.confirm { select = true },
-          --['<Tab>'] = cmp.mapping.select_next_item(),
-          --['<S-Tab>'] = cmp.mapping.select_prev_item(),
+          ['<CR>'] = cmp.mapping.confirm { select = true },
+          ['<Tab>'] = cmp.mapping.select_next_item(),
+          ['<S-Tab>'] = cmp.mapping.select_prev_item(),
 
           -- Manually trigger a completion from nvim-cmp.
           --  Generally you don't need this, because nvim-cmp will display
@@ -823,7 +887,6 @@ require('lazy').setup({
       }
     end,
   },
-
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
@@ -862,6 +925,15 @@ require('lazy').setup({
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
+
+      -- Comment and uncomment text
+      require('mini.comment').setup()
+
+      -- Auto pairs
+      require('mini.pairs').setup()
+
+      -- Auto join/split
+      require('mini.splitjoin').setup()
 
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,
@@ -907,6 +979,32 @@ require('lazy').setup({
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
+  {
+    'nvim-neotest/neotest',
+    config = function()
+      require('neotest').setup {
+        dependencies = {
+          'nvim-treesitter/nvim-treesitter',
+          'nvim-neotest/nvim-nio',
+          'nvim-lua/plenary.nvim',
+          {
+            'nvim-neotest/neotest-python',
+            config = function()
+              require('neotest').setup {
+                adapters = {
+                  require 'neotest-python' {
+                    args = { '--log-level', 'DEBUG' },
+                    runner = 'pytest',
+                  },
+                },
+              }
+            end,
+          },
+        },
+      }
+      vim.keymap.set('n', '<leader>Ntr', require('neotest').summary.toggle, { desc = '[N]eo[t]est: [r]un nearest test' })
+    end,
+  },
 
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
@@ -917,12 +1015,12 @@ require('lazy').setup({
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug',
-  -- require 'kickstart.plugins.indent_line',
+  require 'kickstart.plugins.debug',
+  require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
-  -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
+  require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
